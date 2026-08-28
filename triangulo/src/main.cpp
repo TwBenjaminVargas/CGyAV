@@ -43,6 +43,42 @@ void processInput(GLFWwindow *window) {
     }
 }
 
+// Verifica si un shader (Vertex/Fragment) se compiló correctamente
+bool checkShaderCompilation(GLuint shader, const std::string& type) {
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLint logLength = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength); // Obtiene tamaño del mensaje de error
+        
+        std::string infoLog(logLength, '\0');
+        glGetShaderInfoLog(shader, logLength, nullptr, &infoLog[0]); // Extrae el log textual
+        
+        std::cerr << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" 
+                  << infoLog << "\n-----------------------------------------------------\n";
+        return false;
+    }
+    return true;
+}
+
+// Verifica si el Shader Program se enlazó (linkeo) correctamente
+bool checkProgramLinking(GLuint program) {
+    GLint success;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        GLint logLength = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
+        
+        std::string infoLog(logLength, '\0');
+        glGetProgramInfoLog(program, logLength, nullptr, &infoLog[0]);
+        
+        std::cerr << "ERROR::PROGRAM_LINKING_ERROR\n" 
+                  << infoLog << "\n-----------------------------------------------------\n";
+        return false;
+    }
+    return true;
+}
+
 int main() {                                     
     if (!glfwInit()) return EXIT_FAILURE;        // Inicializa GLFW
     
@@ -71,16 +107,42 @@ int main() {
     // -------------------------------------------------------------------------
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER); 
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);   
-    glCompileShader(vertexShader);                               
+    glCompileShader(vertexShader);
+	
+	// Abortar si falla la compilación del Vertex Shader
+    if (!checkShaderCompilation(vertexShader, "VERTEX")) {
+        glDeleteShader(vertexShader);
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
 
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER); 
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);   
-    glCompileShader(fragmentShader);                             
+    glCompileShader(fragmentShader);
+	
+	if (!checkShaderCompilation(fragmentShader, "FRAGMENT")) {
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
 
     GLuint shaderProgram = glCreateProgram(); 
     glAttachShader(shaderProgram, vertexShader);    
     glAttachShader(shaderProgram, fragmentShader);  
-    glLinkProgram(shaderProgram);                   
+    glLinkProgram(shaderProgram);
+	
+	// Abortar si falla el enlazado del programa
+	if (!checkProgramLinking(shaderProgram)) {
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        glDeleteProgram(shaderProgram);
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
 
     glDeleteShader(vertexShader);                   
     glDeleteShader(fragmentShader);                 
