@@ -1,0 +1,3 @@
+[submodule "simulador_vuelo"]
+	path = simulador_vuelo
+	url = https://github.com/TwBenjaminVargas/Flight-Simulator.git
